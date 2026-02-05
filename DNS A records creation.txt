@@ -1,0 +1,19 @@
+# Import the DNS Server module
+Import-Module DnsServer
+
+# Specify the DNS server and DNS zone where you want to create A records
+ 
+$DNSServer = "DCName"
+ 
+$DNSZone = "DomainName"
+ 
+# Read A records data from the CSV file
+ 
+$ARecordsData = import-csv -Path "C:\temp\dnsdr.csv"
+ 
+# Loop through the data and create A records
+ 
+foreach ($record in $ARecordsData) {
+ 
+Add-DnsServerResourceRecordA -Name $record.HostName -ZoneName $dnszone -IPv4Address $record.IPAddress -ComputerName $DNSServer
+}

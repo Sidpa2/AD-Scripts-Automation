@@ -1,0 +1,28 @@
+# Define the DNS server IP address
+$dnsServer = "BLPAZCUSDC03.capgeminibrim.com"
+
+# Define the zone name
+$zoneName = "capgeminibrim.com"
+
+# Specify the path to the CSV file containing A records and IP addresses
+$csvPath = "C:\temp\dns1.csv"
+
+# Import the CSV file
+$aRecordsToDelete = Import-Csv $csvPath
+
+# Iterate through each row in the CSV
+foreach ($record in $aRecordsToDelete) {
+    $recordName = $record.Name
+    $recordFqdn = $recordName + "." + $zoneName
+
+    # Check if the A record exists with the specified hostname and IP address
+    $existingRecord = Get-DnsServerResourceRecord -ZoneName $zoneName -Name $recordName -RRType A -ErrorAction SilentlyContinue 
+
+    if ($existingRecord) {
+        # Remove the existing A record
+        Remove-DnsServerResourceRecord -ZoneName $zoneName -Name $recordName -RRType A -ComputerName $dnsServer
+        Write-Host "Deleted A record $recordFqdn with IP $recordIP"
+    } else {
+        Write-Host "A record $recordFqdn with IP $recordIP does not exist"
+    }
+}

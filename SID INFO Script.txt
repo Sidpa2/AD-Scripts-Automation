@@ -1,0 +1,66 @@
+$path = "C:\Domain\SID\Output\" #save the excel file
+$Message = "SID DOMAIN HISTROY" #dislay the message
+$Date = Get-Date -Format yyyyMMddHHmm #date and time
+$SIDPATH=$path + $Message +" - "+ $Date.ToString() + ".csv" #save the file name
+$include = (
+"we.interbrew.net",
+"ee.interbrew.net",
+"co.interbrew.net",
+"it.interbrew.net",
+"interbrew.net")    #assign the groups
+Start-Transcript -path $SIDPATH -Append
+Get-Addomain -identity $include | select SID * | export-csv -path $SIDPATH -Notypeinformation
+stop-transcript 
+#this code will get only SID number releated to domain 
+===================================
+#FOR WE DOMAIN
+$path = "C:\temp\" #save the excel file
+$Message = "SID DOMAIN HISTROY" #dislay the message
+$Date = Get-Date -Format yyyyMMddHHmm #date and time
+$SIDPATH=$path + $Message +" - "+ $Date.ToString() + ".csv"
+Get-Addomain -identity we.interbrew.net
+$Groups = Get-ADGroup -filter * -searchbase "we.interbrew.net"
+foreach { $Group in $Groups) {
+Get-ADGroup -filter {Name -eq $Group.name} | select Name, SIDHistroy | export-csv -path $SIDPATH
+}
+
+
+#For EE domain
+$path = "C:\Domains\EE\SID\Output\" #save the excel file
+$Message = "SID DOMAIN HISTROY" #dislay the message
+$Date = Get-Date -Format yyyyMMddHHmm #date and time
+$SIDPATH=$path + $Message +" - "+ $Date.ToString() + ".csv"
+Get-Addomain -identity ee.interbrew.net
+$Groups = Get-ADGroup -filter * -searchbase "ee.interbrew.net"
+foreach { $group in $Groups) {
+Get-ADGroup -filter {Name -eq $Group.name} | select Name, SIDHistroy | export-csv -path $SIDPATH
+}
+
+#For CO 
+$path = "C:\Domains\CO\SID\Output\" #save the excel file
+$Message = "SID DOMAIN HISTROY" #dislay the message
+$Date = Get-Date -Format yyyyMMddHHmm #date and time
+$SIDPATH=$path + $Message +" - "+ $Date.ToString() + ".csv"
+Get-Addomain -identity co.interbrew.net
+$Groups = Get-ADGroup -filter * -searchbase "co.interbrew.net"
+foreach { $Group in $groups) {
+Get-ADGroup -filter {Name -eq $Group.name} | select Name, SIDHistroy | export-csv -path $SIDPATH
+}
+
+#For IT
+$path = "C:\Domains\IT\SID\Output\" #save the excel file
+$Message = "SID DOMAIN HISTROY" #dislay the message
+$Date = Get-Date -Format yyyyMMddHHmm #date and time
+$SIDPATH=$path + $Message +" - "+ $Date.ToString() + ".csv"
+Get-Addomain -identity co.interbrew.net
+$Groups = Get-ADGroup -filter * -searchbase "co.interbrew.net"
+foreach { $Group in $groups) {
+Get-ADGroup -filter {Name -eq $Group.name} | select Name, SIDHistroy | export-csv -path $SIDPATH
+}
+
+Theory -
+SID histroy available in group and users in particular domains
+it is releated to permission like security identifier 
+soruce ---------AD trust-------------target
+name creditional and sid no different in that time then it will denied so becuase of SID histry is not present there
+so we will do transfer the sid histroy to that user or group

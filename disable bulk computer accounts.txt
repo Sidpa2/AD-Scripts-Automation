@@ -1,0 +1,21 @@
+
+try { Write-Host -ForegroundColor Yellow "The Computer details Fetching :"
+   
+$Pclist = Get-Content C:\temp\Computers.txt # Specify the path to the computers list.
+Foreach($pc in $Pclist)   #use loop to get each computer name
+     {
+     Set-ADComputer -Identity $pc -Enabled $false 
+
+     Get-ADComputer -Identity $pc | select Name,Enabled | export-csv -Path C:\temp\ss.csv -NoTypeInformation -Append
+
+     Write-Host "The Listed Computer disabled sucessfully"
+
+     }
+     }
+    catch { Write-Error -Exception "The script is not executed sucessfully"
+
+    }
+    
+    
+
+

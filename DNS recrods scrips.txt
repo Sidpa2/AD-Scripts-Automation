@@ -1,0 +1,109 @@
+<#
+=================================================
+ DNS Record Management Script
+ Author  : Siddhesh Pawar
+ Purpose : Create/Delete DNS A records with
+           Logging + WhatIf (Audit Safe)
+=================================================
+#>
+
+Import-Module DnsServer
+
+# ================= CONFIGURATION =================
+$ZoneName     = "example.com"
+$DNSServer    = "DC01"
+$LogFile      = "C:\Logs\DNS_Audit.log"
+
+# TRUE  = Simulation mode (SAFE / DEFAULT)
+# FALSE = Actual execution (PRODUCTION)
+$EnableWhatIf = $true
+# =================================================
+
+# Create log directory if not exists
+$LogDir = Split-Path $LogFile
+if (!(Test-Path $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+
+# ================= LOGGING FUNCTION ===============
+function Write-Log {
+    param (
+        [string]$Message,
+        [string]$Level = "INFO"
+    )
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "$Timestamp [$Level] $Message" | Tee-Object -FilePath $LogFile -Append
+}
+# =================================================
+
+# ================= CREATE A RECORD ================
+function New-DnsARecord {
+    param (
+        [Parameter(Mandatory)]
+        [string]$HostName,
+
+        [Parameter(Mandatory)]
+        [string]$IPAddress
+    )
+
+    Write-Log "Request received to CREATE A record: $HostName -> $IPAddress"
+
+    try {
+        Add-DnsServerResourceRecordA `
+            -Name $HostName `
+            -ZoneName $ZoneName `
+            -IPv4Address $IPAddress `
+            -ComputerName $DNSServer `
+            -WhatIf:$EnableWhatIf `
+            -ErrorAction Stop
+
+        Write-Log "SUCCESS: A record creation processed for $HostName"
+    }
+    catch {
+        Write-Log "ERROR creating A record for $HostName : $($_.Exception.Message)" "ERROR"
+    }
+}
+# =================================================
+
+# ================= DELETE A RECORD ================
+function Remove-DnsARecord {
+    param (
+        [Parameter(Mandatory)]
+        [string]$HostName
+    )
+
+    Write-Log "Request received to DELETE A record: $HostName"
+
+    try {
+        $Record = Get-DnsServerResourceRecord `
+            -ZoneName $ZoneName `
+            -Name $HostName `
+            -RRType "A" `
+            -ComputerName $DNSServer `
+            -ErrorAction Stop
+
+        Remove-DnsServerResourceRecord `
+            -ZoneName $ZoneName `
+            -InputObject $Record `
+            -ComputerName $DNSServer `
+            -Force `
+            -WhatIf:$EnableWhatIf `
+            -ErrorAction Stop
+
+        Write-Log "SUCCESS: A record deletion processed for $HostName"
+    }
+    catch {
+        Write-Log "ERROR deleting A record for $HostName : $($_.Exception.Message)" "ERROR"
+    }
+}
+# =================================================
+
+# ================= SAMPLE EXECUTION ===============
+# CREATE
+# New-DnsARecord -HostName "app01" -IPAddress "192.168.1.20"
+
+# DELETE
+# Remove-DnsARecord -HostName "app01"
+# =================================================
+
+Write-Log "DNS Script execution completed"
