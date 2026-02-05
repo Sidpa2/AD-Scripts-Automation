@@ -1,0 +1,139 @@
+# ===============================
+# Active Directory Pre Evidence Report
+# ===============================
+
+$ReportPath = "C:\AD_Pre_Evidence_Report_$Date.html"
+$Computer   = $env:COMPUTERNAME
+$IP         = (Get-NetIPAddress -AddressFamily IPv4 |
+              Where-Object {$_.InterfaceAlias -notlike "Loopback*"} |
+              Select-Object -First 1).IPAddress
+$Date       = Get-Date 
+
+# ---------- HTML Header ----------
+$HTML = @"
+<html>
+<head>
+<title>Active Directory Pre Evidence Dashboard</title>
+<style>
+body { font-family: Arial; background-color:#f4f6f9; }
+h1,h2 { background:#1f4e79; color:white; padding:10px; }
+table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+th { background:#2f75b5; color:white; padding:8px; }
+td { border:1px solid #ccc; padding:8px; }
+.ok { color:green; font-weight:bold; }
+.notok { color:red; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1>Active Directory Pre Evidence Dashboard</h1>
+<p>
+<b>Hostname:</b> $Computer<br>
+<b>IP Address:</b> $IP<br>
+<b>Report Generated:</b> $Date
+</p>
+"@
+
+# ---------- Last 3 Months Installed KB ----------
+$HTML += "<h2>Last 3 Month Installed KB</h2>
+<table><tr><th>Update Type</th><th>KB ID</th><th>Install Date</th></tr>"
+
+Get-HotFix | Where-Object {
+    $_.InstalledOn -gt (Get-Date).AddMonths(-3)
+} | ForEach-Object {
+    $HTML += "<tr>
+    <td>Security Update</td>
+    <td>$($_.HotFixID)</td>
+    <td>$($_.InstalledOn)</td>
+    </tr>"
+}
+
+$HTML += "</table>"
+
+# ---------- Disk Space ----------
+$HTML += "<h2>Disk Space</h2>
+<table><tr><th>Drive</th><th>Total (GB)</th><th>Free (GB)</th><th>Free %</th></tr>"
+
+Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | ForEach-Object {
+    $FreePct = [math]::Round(($.FreeSpace / $.Size) * 100, 2)
+    $HTML += "<tr>
+    <td>$($_.DeviceID)</td>
+    <td>$([math]::Round($_.Size/1GB,2))</td>
+    <td>$([math]::Round($_.FreeSpace/1GB,2))</td>
+    <td>$FreePct%</td>
+    </tr>"
+}
+
+$HTML += "</table>"
+
+# ---------- Utilization ----------
+$CPU = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+$MEM = Get-CimInstance Win32_OperatingSystem
+$MemUsed = [math]::Round((($MEM.TotalVisibleMemorySize - $MEM.FreePhysicalMemory) /
+                          $MEM.TotalVisibleMemorySize) * 100, 2)
+
+$HTML += "<h2>Utilization</h2>
+<table><tr><th>CPU %</th><th>Memory %</th></tr>
+<tr><td>$([math]::Round($CPU,2))</td><td>$MemUsed</td></tr>
+</table>"
+
+# ---------- Replication Summary ----------
+$HTML += "<h2>Replication Summary</h2><pre>"
+$HTML += (repadmin /replsummary | Out-String)
+$HTML += "</pre>"
+
+# ---------- NSLookup ----------
+$Domain = (Get-ADDomain).DNSRoot
+$HTML += "<h2>NSLookup Resolution</h2><pre>"
+$HTML += (nslookup $Domain | Out-String)
+$HTML += "</pre>"
+
+# ---------- LDAP Port Test ----------
+$HTML += "<h2>LDAP Connectivity Test</h2>"
+
+$ldap = Test-NetConnection -ComputerName $Computer -Port 389
+if ($ldap.TcpTestSucceeded) {
+    $HTML += "<p class='ok'>LDAP Connection Successful on Port 389</p>"
+} else {
+    $HTML += "<p class='notok'>LDAP Connection Failed on Port 389</p>"
+}
+
+# ---------- Services ----------
+$Services = "NTDS","DNS","Netlogon","KDC"
+$HTML += "<h2>Services</h2>
+<table><tr><th>Service</th><th>Status</th></tr>"
+
+foreach ($S in $Services) {
+    $Svc = Get-Service $S -ErrorAction SilentlyContinue
+    if ($Svc) {
+        $StatusClass = if ($Svc.Status -eq "Running") {"ok"} else {"notok"}
+        $HTML += "<tr><td>$S</td><td class='$StatusClass'>$($Svc.Status)</td></tr>"
+    } else {
+        $HTML += "<tr><td>$S</td><td class='notok'>Not Found</td></tr>"
+    }
+}
+
+$HTML += "</table>"
+
+# ---------- Login Events ----------
+$HTML += "<h2>Recent Successful Login Events</h2>
+<table><tr><th>Date</th><th>Account</th></tr>"
+
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624} -MaxEvents 5 |
+ForEach-Object {
+    $HTML += "<tr>
+    <td>$($_.TimeCreated)</td>
+    <td>$($_.Properties[5].Value)</td>
+    </tr>"
+}
+
+$HTML += "</table>"
+
+# ---------- Footer ----------
+$HTML += "</body></html>"
+
+# Save Report
+$HTML | Out-File -FilePath $ReportPath -Encoding utf8
+
+
+Write-Host "Report Generated Successfully: $ReportPath" -ForegroundColor Green
