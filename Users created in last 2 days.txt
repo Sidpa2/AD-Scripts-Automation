@@ -1,0 +1,7 @@
+#Users created in last 2 days
+
+$date = (Get-Date).Adddays(-2)
+
+$ou = "OU=Staff,DC=sid,DC=com"
+
+Get-ADUser -SearchBase $ou ` -Filter { WhenCreated -ge $date } ` -Properties whencreated, samaccountname | Select-Object Name, Whencreated, SamaccountName | Export-Csv -Path C:\user.csv -NoTypeInformation
