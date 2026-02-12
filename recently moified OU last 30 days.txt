@@ -1,0 +1,25 @@
+Import-Module ActiveDirectory
+
+# Define date (Last 30 days)
+$Date = (Get-Date).AddDays(-30)
+
+# Define export path
+$ExportPath = "C:\Temp\OUs_Last30Days.csv"
+
+# Create folder if not exists
+If (!(Test-Path "C:\Temp")) {
+    New-Item -ItemType Directory -Path "C:\Temp"
+}
+
+# Get OUs created in last 30 days and export
+Get-ADOrganizationalUnit -Filter * -Properties whenCreated, whenChanged, ManagedBy |
+Where-Object { $_.whenCreated -ge $Date } |
+Select-Object Name,
+              DistinguishedName,
+              whenCreated,
+              whenChanged,
+              ManagedBy |
+Sort-Object whenCreated -Descending |
+Export-Csv $ExportPath -NoTypeInformation
+
+Write-Host "Export completed successfully. File saved at $ExportPath"
